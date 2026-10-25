@@ -3,7 +3,7 @@ import { useUser } from '../../../auth/AuthContext';
 import { Field, LABEL, Select, TextInput } from '../../../components/form';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
-import { genererDocumentManuel, moisReference } from '../../../db/actions';
+import { genererDocumentManuel, moisReference } from '../../../db/api';
 import { getDB, useDB } from '../../../db/store';
 import { LIBELLE_MODELE, MODELES_MENSUELS } from '../../../lib/documents';
 import { telechargerPDF } from '../../../lib/pdfLazy';
@@ -65,7 +65,7 @@ export default function GenererDocumentModal({ open, employeId, onClose, onGener
     .reverse();
   const attestation = modele === 'attestation_travail' || modele === 'attestation_salaire';
 
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const params: Record<string, string> = {};
@@ -78,7 +78,7 @@ export default function GenererDocumentModal({ open, employeId, onClose, onGener
         params.periode = `${dateCourte(c.debut)} — ${dateCourte(c.fin)}`;
         params.jours = String(c.jours);
       }
-      const doc = genererDocumentManuel(user, cible, modele, params);
+      const doc = await genererDocumentManuel(user, cible, modele, params);
       telechargerPDF(getDB(), doc);
       onGenere(doc);
       onClose();

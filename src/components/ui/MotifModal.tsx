@@ -18,8 +18,8 @@ interface MotifModalProps {
   /** Désactive la confirmation (ex. aucun changement) */
   bloque?: boolean;
   onClose: () => void;
-  /** Peut lever une erreur métier : elle est affichée dans la modale */
-  onConfirm: (motif: string) => void;
+  /** Peut lever une erreur métier (ou rejeter sa promesse) : elle est affichée dans la modale */
+  onConfirm: (motif: string) => void | Promise<void>;
 }
 
 // Action sensible exigeant un motif écrit, conservé dans le journal d'audit
@@ -33,12 +33,17 @@ export default function MotifModal({ open, titre, icone, tone, resume, children,
     }
   }, [open]);
 
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const [envoi, setEnvoi] = useState(false);
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (envoi) return;
+    setEnvoi(true);
     try {
-      onConfirm(motif.trim());
+      await onConfirm(motif.trim());
     } catch (err) {
       setErreur(messageErreur(err));
+    } finally {
+      setEnvoi(false);
     }
   };
 
@@ -89,7 +94,7 @@ export default function MotifModal({ open, titre, icone, tone, resume, children,
               className={`px-5 py-2.5 rounded-lg text-xs font-semibold text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                 danger ? 'bg-rose-600 hover:bg-rose-500' : 'bg-brand-600 hover:bg-brand-500'
               }`}
-              disabled={bloque || !motif.trim()}
+              disabled={bloque || !motif.trim() || envoi}
               type="submit"
             >
               <Icon className="text-[16px]" name={icone} />

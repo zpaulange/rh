@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { marquerLues, notificationsPour } from '../../db/actions';
+import { marquerLues, notificationsPour } from '../../db/api';
 import { lienEspace } from '../../hooks/useBaseGestion';
 import { useDB } from '../../db/store';
 import { depuis } from '../../lib/relatif';
@@ -38,7 +38,7 @@ export default function NotificationBell({ user }: { user: User }) {
   }, [open]);
 
   const ouvrir = (n: Notification) => {
-    marquerLues([n.id]);
+    void marquerLues([n.id]).catch(() => undefined);
     setOpen(false);
     if (n.lien) navigate(user.role === 'admin' ? lienEspace(n.lien, '/admin') : n.lien);
   };
@@ -65,7 +65,7 @@ export default function NotificationBell({ user }: { user: User }) {
             {nonLues.length > 0 && (
               <button
                 className="text-xs font-medium text-brand-400 hover:text-brand-300 transition-colors"
-                onClick={() => marquerLues(nonLues.map((n) => n.id))}
+                onClick={() => void marquerLues(nonLues.map((n) => n.id)).catch(() => undefined)}
                 type="button"
               >
                 Tout marquer comme lu

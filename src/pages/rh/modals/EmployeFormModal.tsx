@@ -7,7 +7,7 @@ import { ajouterJours, dateKey } from '../../../lib/time';
 import Modal from '../../../components/ui/Modal';
 import { useUser } from '../../../auth/AuthContext';
 import { useDB } from '../../../db/store';
-import type { NouvelEmploye } from '../../../db/actions';
+import type { NouvelEmploye } from '../../../db/api';
 import { AVANTAGES_NATURE, LIBELLE_CATEGORIE_PRO } from '../../../config/paie';
 import { fcfa, smigApplicable } from '../../../lib/paie';
 import type { CategorieProfessionnelle, Employe, Role, TypeAvantageNature } from '../../../types';
@@ -68,7 +68,8 @@ interface Props {
   open: boolean;
   employe?: Employe;
   onClose: () => void;
-  onSave: (data: NouvelEmploye, role: Role) => void;
+  /** Enregistrement (envoyé au serveur) : une erreur métier est affichée dans le formulaire */
+  onSave: (data: NouvelEmploye, role: Role) => void | Promise<void>;
 }
 
 export default function EmployeFormModal({ open, employe, onClose, onSave }: Props) {
@@ -97,12 +98,18 @@ export default function EmployeFormModal({ open, employe, onClose, onSave }: Pro
 
   const set = <K extends keyof NouvelEmploye>(k: K, v: NouvelEmploye[K]) => setF((x) => ({ ...x, [k]: v }));
 
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const [envoi, setEnvoi] = useState(false);
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (envoi) return;
+    setEnvoi(true);
+    setErreur(null);
     try {
-      onSave({ ...f, prenom: f.prenom.trim(), nom: f.nom.trim(), emailPro: f.emailPro.trim() }, role);
+      await onSave({ ...f, prenom: f.prenom.trim(), nom: f.nom.trim(), emailPro: f.emailPro.trim() }, role);
     } catch (err) {
       setErreur(err instanceof Error ? err.message : 'Enregistrement impossible.');
+    } finally {
+      setEnvoi(false);
     }
   };
 
@@ -375,7 +382,7 @@ export default function EmployeFormModal({ open, employe, onClose, onSave }: Pro
             <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors" onClick={onClose} type="button">
               Annuler
             </button>
-            <button className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm shadow-blue-600/20" type="submit">
+            <button className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm shadow-blue-600/20 disabled:opacity-60 disabled:cursor-wait" disabled={envoi} type="submit">
               {edition ? 'Enregistrer les modifications' : 'Créer le collaborateur'}
             </button>
           </div>

@@ -5,7 +5,7 @@ import { messageErreur } from '../../../components/ui/Dialog';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
 import { MOTIFS_SORTIE } from '../../../config/paie';
-import { enregistrerSortie } from '../../../db/actions';
+import { enregistrerSortie } from '../../../db/api';
 import { useDB } from '../../../db/store';
 import { fcfa, mentionExoneration } from '../../../lib/paie';
 import { serverNow } from '../../../lib/serverTime';
@@ -82,10 +82,10 @@ export default function SortieModal({ employe, onClose, onEnregistree }: Props) 
 
   const bloquant = !calcul || dateSortie < dateMin || notification > dateSortie;
 
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      onEnregistree(enregistrerSortie(user, employe.id, { motif, dateNotification: notification, dateSortie, preavis, observations, joursLiberteNonUtilises: preavis === 'effectue' ? joursLiberte : 0 }));
+      onEnregistree(await enregistrerSortie(user, employe.id, { motif, dateNotification: notification, dateSortie, preavis, observations, joursLiberteNonUtilises: preavis === 'effectue' ? joursLiberte : 0 }));
     } catch (err) {
       setErreur(messageErreur(err));
     }

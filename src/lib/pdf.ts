@@ -457,7 +457,7 @@ export function exporterRapportPDF(titre: string, sousTitre: string, colonnes: s
       const n = doc.getNumberOfPages();
       doc.setFontSize(7.5);
       doc.setTextColor(...GRIS);
-      doc.text(pdfTexte(`Généré le ${dateCourte(dateKey(new Date()))} à ${heureHM(new Date())} par ${auteur} • SikaRH Pro`), 15, 203);
+      doc.text(pdfTexte(`Généré le ${dateCourte(dateKey(new Date()))} à ${heureHM(new Date())} par ${auteur} • SikaRH`), 15, 203);
       doc.text(`Page ${n}`, 282, 203, { align: 'right' });
     },
   });

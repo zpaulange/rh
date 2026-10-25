@@ -48,7 +48,19 @@ function HomeRedirect() {
   return <Navigate to={user ? accueilPour(db, user) : '/login'} replace />;
 }
 
+/** Écran affiché pendant la reprise de la session au chargement */
+function Chargement() {
+  return (
+    <div className="min-h-screen bg-[#0b0f19] flex flex-col items-center justify-center gap-4" role="status">
+      <div className="w-10 h-10 rounded-full border-2 border-slate-700 border-t-brand-500 animate-spin"></div>
+      <span className="text-sm text-slate-400">Chargement de SikaRH…</span>
+    </div>
+  );
+}
+
 export default function App() {
+  const { pret } = useAuth();
+  if (!pret) return <Chargement />;
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

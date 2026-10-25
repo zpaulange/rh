@@ -11,7 +11,7 @@ import Icon from '../../components/ui/Icon';
 import ActionMenu from '../../components/ui/ActionMenu';
 import { messageErreur, useDialog } from '../../components/ui/Dialog';
 import { peut } from '../../lib/permissions';
-import { annulerSortie, consulterDonneesSensibles, modifierEmploye } from '../../db/actions';
+import { annulerSortie, consulterDonneesSensibles, modifierEmploye } from '../../db/api';
 import MotifModal from '../../components/ui/MotifModal';
 import SortieModal from './modals/SortieModal';
 import { allaitementEnCours } from '../../lib/maternite';
@@ -93,10 +93,10 @@ export default function EmployeFiche() {
   const allaitement = allaitementEnCours(db, e, today);
   const docDe = (docId: string | null) => (docId ? db.documents.find((d) => d.id === docId) : undefined);
 
-  const reveler = () => {
+  const reveler = async () => {
     if (!sensibleVisible) {
       try {
-        consulterDonneesSensibles(user, id);
+        await consulterDonneesSensibles(user, id);
       } catch (err) {
         void dialog.alert({ titre: 'Accès refusé', tone: 'danger', icon: 'lock', message: messageErreur(err) });
         return;
@@ -377,8 +377,12 @@ export default function EmployeFiche() {
                         confirmer: 'Confirmer la vérification',
                       });
                       if (!ok) return;
-                      modifierEmploye(user, id, { npiVerifie: true });
-                      void dialog.alert({ titre: 'NPI vérifié', tone: 'success', message: `Le NPI de ${e.prenom} ${e.nom} est désormais marqué comme vérifié.` });
+                      try {
+                        await modifierEmploye(user, id, { npiVerifie: true });
+                        void dialog.alert({ titre: 'NPI vérifié', tone: 'success', message: `Le NPI de ${e.prenom} ${e.nom} est désormais marqué comme vérifié.` });
+                      } catch (err) {
+                        void dialog.alert({ titre: 'Action impossible', tone: 'danger', message: messageErreur(err) });
+                      }
                     }}
                     type="button"
                   >
@@ -674,8 +678,8 @@ export default function EmployeFiche() {
       <EmployeFormModal
         employe={e}
         onClose={() => setEdition(false)}
-        onSave={(data) => {
-          modifierEmploye(user, id, data);
+        onSave={async (data) => {
+          await modifierEmploye(user, id, data);
           setEdition(false);
           void dialog.alert({ titre: 'Dossier mis à jour', tone: 'success', message: "Les modifications sont enregistrées, le collaborateur est notifié et l'action est tracée dans le journal d'audit." });
         }}
@@ -737,9 +741,9 @@ export default function EmployeFiche() {
         icone="undo"
         labelMotif="Motif de l'annulation"
         onClose={() => setAnnulation(false)}
-        onConfirm={(motif) => {
+        onConfirm={async (motif) => {
           if (!sortie) return;
-          annulerSortie(user, sortie.id, motif);
+          await annulerSortie(user, sortie.id, motif);
           setAnnulation(false);
           void dialog.alert({ titre: 'Sortie annulée', tone: 'success', message: `${e.prenom} ${e.nom} reste en poste. L'annulation est tracée dans le journal d'audit.` });
         }}

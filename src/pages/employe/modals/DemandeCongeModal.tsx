@@ -4,7 +4,7 @@ import { DatePicker, Field, LABEL, PastilleRadio, RadioGroup, Select, Textarea }
 import FileDrop from '../../../components/ui/FileDrop';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
-import { demanderConge } from '../../../db/actions';
+import { demanderConge } from '../../../db/api';
 import { useDB } from '../../../db/store';
 import { calculerDroits, disponiblePour, dureeConge } from '../../../lib/rules';
 import { joursCalendaires, periodeMaternite } from '../../../lib/maternite';
@@ -88,10 +88,13 @@ export default function DemandeCongeModal({ open, onClose, onSubmitted }: Props)
   const soldeSuffisant = (restant === null || restant >= 0) && !depassePermission;
   const justificatifRequis = (leaveType === 'maladie' || maternite) && !fichier;
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const [envoi, setEnvoi] = useState(false);
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (envoi) return;
+    setEnvoi(true);
     try {
-      demanderConge(user, {
+      await demanderConge(user, {
         type: leaveType,
         debut: maternite ? periodeMat.debut : debut,
         debutPeriode: maternite ? 'matin' : debutPeriode,
@@ -106,6 +109,8 @@ export default function DemandeCongeModal({ open, onClose, onSubmitted }: Props)
       onClose();
     } catch (err) {
       setErreur(err instanceof Error ? err.message : 'Envoi impossible.');
+    } finally {
+      setEnvoi(false);
     }
   };
 
@@ -322,7 +327,7 @@ export default function DemandeCongeModal({ open, onClose, onSubmitted }: Props)
             </button>
             <button
               className="px-5 py-2.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white shadow-sm shadow-brand-600/30 transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={duree === 0 || !soldeSuffisant || justificatifRequis}
+              disabled={duree === 0 || !soldeSuffisant || justificatifRequis || envoi}
               title={justificatifRequis ? 'Certificat médical requis' : undefined}
               type="submit"
             >

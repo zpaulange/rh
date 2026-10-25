@@ -1,21 +1,13 @@
 import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { appliquerEvolutionsEchues, appliquerSortiesEchues } from '../../db/actions';
 import { syncServerTime } from '../../lib/serverTime';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 
 export default function AppLayout() {
-  // Applique les promotions / augmentations planifiées dont la date d'effet est atteinte
+  // Les évolutions de carrière et sorties arrivées à échéance sont appliquées par le serveur (tâche planifiée)
   useEffect(() => {
-    // … et rend effectives les sorties dont le dernier jour est passé
-    const echeances = () => {
-      appliquerEvolutionsEchues();
-      appliquerSortiesEchues();
-    };
-    void syncServerTime().then(echeances);
-    const id = window.setInterval(echeances, 60 * 60 * 1000);
-    return () => window.clearInterval(id);
+    void syncServerTime();
   }, []);
 
   return (

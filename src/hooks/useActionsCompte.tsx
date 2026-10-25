@@ -1,6 +1,6 @@
 import { useUser } from '../auth/AuthContext';
 import { messageErreur, useDialog } from '../components/ui/Dialog';
-import { changerAcces, deverrouillerCompte, reinitialiserMotDePasse } from '../db/actions';
+import { changerAcces, deverrouillerCompte, reinitialiserMotDePasse } from '../db/api';
 import { heureHM } from '../lib/time';
 import type { Compte, Employe } from '../types';
 
@@ -62,7 +62,7 @@ export function useActionsCompte() {
     });
     if (!ok) return;
     try {
-      changerAcces(user, e.id, activer);
+      await changerAcces(user, e.id, activer);
       await dialog.alert({
         titre: activer ? 'Accès réactivé' : 'Accès désactivé',
         tone: activer ? 'success' : 'info',
@@ -83,7 +83,7 @@ export function useActionsCompte() {
     });
     if (!ok) return;
     try {
-      deverrouillerCompte(user, e.id);
+      await deverrouillerCompte(user, e.id);
       await dialog.alert({ titre: 'Compte déverrouillé', tone: 'success', message: `${nom(e)} a été notifié et peut se reconnecter.` });
     } catch (err) {
       await dialog.alert({ titre: 'Action impossible', tone: 'danger', message: messageErreur(err) });
@@ -100,7 +100,7 @@ export function useActionsCompte() {
     });
     if (!ok) return;
     try {
-      const { email, motDePasse } = reinitialiserMotDePasse(user, e.id);
+      const { email, motDePasse } = await reinitialiserMotDePasse(user, e.id);
       await afficherIdentifiants('Mot de passe réinitialisé', e, email, motDePasse);
     } catch (err) {
       await dialog.alert({ titre: 'Action impossible', tone: 'danger', message: messageErreur(err) });

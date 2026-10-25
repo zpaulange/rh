@@ -6,7 +6,7 @@ import FileDrop from '../../../components/ui/FileDrop';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
 import { MOTIFS_PERMISSION } from '../../../config/paie';
-import { justifierAbsence, type Justification } from '../../../db/actions';
+import { justifierAbsence, type Justification } from '../../../db/api';
 import { useDB } from '../../../db/store';
 import type { PeriodeAbsence } from '../../../lib/absences';
 import { ensembleFeries } from '../../../lib/feries';
@@ -72,10 +72,10 @@ export default function JustifierAbsenceModal({ absence, onClose, onJustifiee }:
             ? 'Joignez le certificat médical.'
             : null;
 
-  const submit = (ev: FormEvent<HTMLFormElement>) => {
+  const submit = async (ev: FormEvent<HTMLFormElement>) => {
     ev.preventDefault();
     try {
-      const c = justifierAbsence(user, e.id, debut, fin, {
+      const c = await justifierAbsence(user, e.id, debut, fin, {
         type,
         ...(type === 'permission' ? { motifPermission } : {}),
         motif,

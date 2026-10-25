@@ -11,7 +11,7 @@ import MotifModal from '../../components/ui/MotifModal';
 import PageHeader from '../../components/ui/PageHeader';
 import TabFilter from '../../components/ui/TabFilter';
 import { MOTIFS_PERMISSION } from '../../config/paie';
-import { deciderConge, deciderRegularisation, refuserDemandeDocument, traiterDemandeDocument } from '../../db/actions';
+import { deciderConge, deciderRegularisation, refuserDemandeDocument, traiterDemandeDocument } from '../../db/api';
 import { getDB } from '../../db/store';
 import { useEspaceRH } from '../../hooks/useEspaceRH';
 import { LIBELLE_DEMANDE_DOCUMENT } from '../../lib/documents';
@@ -83,7 +83,7 @@ export default function Demandes() {
     });
     if (!ok) return;
     try {
-      const doc = traiterDemandeDocument(user, d.id);
+      const doc = await traiterDemandeDocument(user, d.id);
       telechargerPDF(getDB(), doc);
       await dialog.alert({ titre: 'Document généré', tone: 'success', icon: 'picture_as_pdf', message: `${doc.titre} a été remis à ${e.prenom} ${e.nom}, qui a été notifié(e).`, details: <span className="font-mono">Code : {doc.code}</span> });
     } catch (err) {
@@ -217,12 +217,12 @@ export default function Demandes() {
       <DecisionModal
         approuver={decision?.approuver ?? true}
         onClose={() => setDecision(null)}
-        onConfirm={(commentaire) => {
+        onConfirm={async (commentaire) => {
           if (!decision) return;
           const d = decision.demande;
           try {
-            if (d.categorie === 'regularisations') deciderRegularisation(user, d.r.id, decision.approuver, commentaire);
-            else if (d.categorie !== 'documents') deciderConge(user, d.c.id, decision.approuver, commentaire);
+            if (d.categorie === 'regularisations') await deciderRegularisation(user, d.r.id, decision.approuver, commentaire);
+            else if (d.categorie !== 'documents') await deciderConge(user, d.c.id, decision.approuver, commentaire);
             setDecision(null);
             const e = employeDe(d.employeId);
             void dialog.alert({
@@ -255,9 +255,9 @@ export default function Demandes() {
         icone="block"
         labelMotif="Motif du refus (transmis au collaborateur)"
         onClose={() => setRefusDoc(null)}
-        onConfirm={(motif) => {
+        onConfirm={async (motif) => {
           if (!refusDoc) return;
-          refuserDemandeDocument(user, refusDoc.id, motif);
+          await refuserDemandeDocument(user, refusDoc.id, motif);
           setRefusDoc(null);
           void dialog.alert({ titre: 'Demande refusée', tone: 'info', message: 'Le collaborateur a été notifié du motif.' });
         }}

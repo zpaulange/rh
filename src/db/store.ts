@@ -1,68 +1,54 @@
 import { useSyncExternalStore } from 'react';
 import type { Database } from '../types';
-import { creerBaseInitiale } from './seed';
 
-// Base de données centralisée côté client (en attendant l'API) :
-// - une seule source de vérité partagée par les espaces Employé, RH et Admin ;
-// - persistée dans le navigateur ;
-// - synchronisée en direct entre onglets (un employé qui pointe apparaît aussitôt côté RH).
+// Cache, côté navigateur, des données visibles par l'utilisateur connecté.
+// La source de vérité est le serveur (API + MySQL) : ce cache est remplacé par la vue renvoyée
+// à la connexion, après chaque action et à chaque nouvelle révision signalée en temps réel.
+// Rien n'est conservé dans le stockage du navigateur.
 
-const STORAGE_KEY = 'sikarh.db';
-export const DB_VERSION = 8;
+/** Données avant connexion : aucun enregistrement, paramètres par défaut */
+export function baseVide(): Database {
+  return {
+    version: 0,
+    comptes: [],
+    employes: [],
+    pointages: [],
+    conges: [],
+    regularisations: [],
+    demandesDocuments: [],
+    documents: [],
+    notifications: [],
+    audit: [],
+    evolutions: [],
+    campagnesPaie: [],
+    departements: [],
+    sorties: [],
+    permissions: { admin: [], rh: [], employe: [] },
+    parametres: {
+      heureDebut: '08:00',
+      heureFin: '17:00',
+      toleranceRetard: 10,
+      heuresJour: 8,
+      site: { nom: '', lat: 0, lng: 0, rayon: 200 },
+      geolocObligatoire: true,
+      photoObligatoire: true,
+      cpParMois: 2,
+      quotaPermissions: 10,
+      anticipationConges: false,
+      dateRepriseSoldes: '2000-01-01',
+      dateDebutPointage: '2000-01-01',
+      sessionMinutes: 30,
+      tentativesMax: 5,
+      verrouillageMinutes: 15,
+      joursFeries: [],
+    },
+  };
+}
 
-let state: Database = charger();
+let state: Database = baseVide();
 const listeners = new Set<() => void>();
 
-function charger(): Database {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Database;
-      if (parsed.version === DB_VERSION) return parsed;
-    }
-  } catch {
-    // stockage indisponible ou corrompu : on repart de la base initiale
-  }
-  const initiale = creerBaseInitiale();
-  persister(initiale);
-  return initiale;
-}
-
-function persister(db: Database): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-  } catch {
-    // Quota dépassé (photos) : on retire les photos les plus anciennes et on réessaie
-    try {
-      const allege: Database = {
-        ...db,
-        pointages: db.pointages.map((p, i) => (i < db.pointages.length - 50 ? { ...p, photo: null } : p)),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allege));
-    } catch {
-      // la base reste en mémoire pour la session
-    }
-  }
-}
-
-function emettre(): void {
-  listeners.forEach((l) => l());
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('storage', (e) => {
-    if (e.key !== STORAGE_KEY || !e.newValue) return;
-    try {
-      const next = JSON.parse(e.newValue) as Database;
-      if (next.version === DB_VERSION) {
-        state = next;
-        emettre();
-      }
-    } catch {
-      // ignore
-    }
-  });
-}
+const emettre = () => listeners.forEach((l) => l());
 
 export const getDB = (): Database => state;
 
@@ -71,27 +57,19 @@ export function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-/** Applique une modification sur une copie de la base, puis persiste et notifie */
-export function mutate<T = void>(recipe: (db: Database) => T): T {
-  const draft = structuredClone(state);
-  const result = recipe(draft);
-  state = draft;
-  persister(state);
+/** Remplace le cache par une vue du serveur ; une vue plus ancienne que celle affichée est ignorée */
+export function definirEtat(db: Database): void {
+  if (db.version < state.version) return;
+  state = db;
   emettre();
-  return result;
 }
 
-/** Réinitialise la base de démonstration */
-export function reinitialiserBase(): void {
-  state = creerBaseInitiale();
-  persister(state);
+/** Vide le cache (déconnexion) */
+export function viderEtat(): void {
+  state = baseVide();
   emettre();
 }
 
 export function useDB(): Database {
   return useSyncExternalStore(subscribe, getDB);
-}
-
-export function uid(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 }

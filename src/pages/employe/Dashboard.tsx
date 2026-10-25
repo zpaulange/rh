@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../../components/ui/Icon';
 import { messageErreur, useDialog } from '../../components/ui/Dialog';
-import { basculerPause, notificationsPour, pointerDepart } from '../../db/actions';
+import { basculerPause, notificationsPour, pointerDepart } from '../../db/api';
 import { useEspaceEmploye } from '../../hooks/useEspaceEmploye';
 import { jourFerie } from '../../lib/feries';
 import { localiser, versGeoPoint } from '../../lib/geo';
@@ -85,9 +85,9 @@ export default function Dashboard() {
       ? { label: 'En congé', className: 'bg-brand-500/10 text-brand-400 border-brand-500/20', dot: 'bg-brand-400' }
       : { label: 'Non pointé', className: 'bg-slate-800 text-slate-300 border-slate-700', dot: 'bg-slate-400' };
 
-  const handlePause = () => {
+  const handlePause = async () => {
     try {
-      basculerPause(user);
+      await basculerPause(user);
     } catch (e) {
       void dialog.alert({ titre: 'Action impossible', tone: 'danger', message: messageErreur(e) });
     }
@@ -112,7 +112,7 @@ export default function Dashboard() {
       // le départ reste enregistré même sans position
     }
     try {
-      pointerDepart(user, geo);
+      await pointerDepart(user, geo);
       await dialog.alert({
         titre: 'Départ enregistré',
         tone: 'success',

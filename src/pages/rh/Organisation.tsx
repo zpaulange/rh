@@ -16,7 +16,7 @@ import {
   supprimerDepartement,
   supprimerService,
   type DonneesDepartement,
-} from '../../db/actions';
+} from '../../db/api';
 import { useEspaceRH } from '../../hooks/useEspaceRH';
 import { estSorti } from '../../lib/contrat';
 import type { Departement, Employe, Service } from '../../types';
@@ -62,7 +62,7 @@ export default function Organisation() {
     });
     if (!ok) return;
     try {
-      supprimerDepartement(user, d.id);
+      await supprimerDepartement(user, d.id);
       await dialog.alert({ titre: 'Département supprimé', tone: 'success', message: `${d.nom} ne fait plus partie de l'organisation.` });
     } catch (err) {
       await dialog.alert({ titre: 'Suppression impossible', tone: 'danger', message: messageErreur(err) });
@@ -82,7 +82,7 @@ export default function Organisation() {
     });
     if (!ok) return;
     try {
-      supprimerService(user, d.id, s.id);
+      await supprimerService(user, d.id, s.id);
       await dialog.alert({ titre: 'Service supprimé', tone: 'success', message: `${s.nom} a été retiré de ${d.nom}.` });
     } catch (err) {
       await dialog.alert({ titre: 'Suppression impossible', tone: 'danger', message: messageErreur(err) });
@@ -256,14 +256,14 @@ function EditionModal({ edition, onClose }: { edition: Edition | null; onClose: 
     return Number(b.departement === dep) - Number(a.departement === dep) || a.nom.localeCompare(b.nom);
   });
 
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       if (edition.nature === 'departement') {
-        if (edition.departement) modifierDepartement(user, edition.departement.id, f);
-        else creerDepartement(user, f);
-      } else if (edition.service) modifierService(user, edition.departement.id, edition.service.id, { nom: f.nom, responsableId: f.responsableId });
-      else ajouterService(user, edition.departement.id, { nom: f.nom, responsableId: f.responsableId });
+        if (edition.departement) await modifierDepartement(user, edition.departement.id, f);
+        else await creerDepartement(user, f);
+      } else if (edition.service) await modifierService(user, edition.departement.id, edition.service.id, { nom: f.nom, responsableId: f.responsableId });
+      else await ajouterService(user, edition.departement.id, { nom: f.nom, responsableId: f.responsableId });
       onClose();
       void dialog.alert({
         titre: creation ? (estDep ? 'Département créé' : 'Service ajouté') : 'Modifications enregistrées',
