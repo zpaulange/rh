@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { authentifier, journaliserDeconnexion } from '../db/actions';
-import { getDB, useDB } from '../db/store';
+import { connexion, deconnexion, ErreurApi, quandSessionPerdue, reprendreSession, suivreRevisions } from '../db/api';
+import { definirEtat, getDB, useDB, viderEtat } from '../db/store';
 import { syncServerTime } from '../lib/serverTime';
 import type { Database, User } from '../types';
 
-const SESSION_KEY = 'sikarh.session';
+// Session : le jeton est un cookie httpOnly posé par le serveur (inaccessible au JavaScript).
+// Le navigateur ne mémorise que le choix « Se souvenir de moi », qui désactive l'expiration après inactivité.
+const PERSISTANTE_KEY = 'sikarh.session-persistante';
 const EXPIRATION_KEY = 'sikarh.session-expiree';
 
 interface Session {
@@ -14,30 +16,30 @@ interface Session {
 
 interface AuthContextValue {
   user: User | null;
+  /** La reprise de session au chargement est terminée */
+  pret: boolean;
+  /** Serveur en mode démonstration (réinitialisation des données autorisée) */
+  demo: boolean;
   login: (email: string, password: string, remember: boolean) => Promise<User>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function lireSession(): Session | null {
-  for (const storage of [localStorage, sessionStorage]) {
-    try {
-      const raw = storage.getItem(SESSION_KEY);
-      if (raw) return JSON.parse(raw) as Session;
-    } catch {
-      // stockage indisponible ou corrompu : on ignore
-    }
+function memoriserPersistance(persistante: boolean) {
+  try {
+    if (persistante) localStorage.setItem(PERSISTANTE_KEY, '1');
+    else localStorage.removeItem(PERSISTANTE_KEY);
+  } catch {
+    // stockage indisponible : la session expirera après inactivité
   }
-  return null;
 }
 
-function effacerSession() {
+function lirePersistance(): boolean {
   try {
-    localStorage.removeItem(SESSION_KEY);
-    sessionStorage.removeItem(SESSION_KEY);
+    return localStorage.getItem(PERSISTANTE_KEY) === '1';
   } catch {
-    // rien à nettoyer
+    return false;
   }
 }
 
@@ -73,54 +75,87 @@ export function consommerExpiration(): boolean {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const db = useDB();
-  const [session, setSession] = useState<Session | null>(lireSession);
+  const [session, setSession] = useState<Session | null>(null);
+  const [pret, setPret] = useState(false);
+  const [demo, setDemo] = useState(false);
   const user = useMemo(() => (session ? construireUser(db, session.compteId) : null), [db, session]);
   const derniereActivite = useRef(Date.now());
 
+  // Reprise de la session existante (cookie) au chargement de l'application
   useEffect(() => {
     void syncServerTime();
+    let actif = true;
+    reprendreSession()
+      .then((r) => {
+        if (!actif) return;
+        definirEtat(r.etat);
+        setDemo(r.serveur.demo);
+        derniereActivite.current = Date.now();
+        setSession({ compteId: r.compteId, persistante: lirePersistance() });
+      })
+      .catch(() => undefined)
+      .finally(() => actif && setPret(true));
+    return () => {
+      actif = false;
+    };
   }, []);
 
-  // Accès retiré par les RH pendant la session
+  // Session expirée ou accès retiré côté serveur
   useEffect(() => {
-    if (session && !user) {
-      effacerSession();
+    quandSessionPerdue(() => {
+      viderEtat();
+      setSession(null);
+    });
+    return () => quandSessionPerdue(null);
+  }, []);
+
+  // Mises à jour en temps réel pendant la session
+  useEffect(() => {
+    if (!session) return;
+    return suivreRevisions();
+  }, [session]);
+
+  // Accès retiré pendant la session (compte désactivé dans les données reçues)
+  useEffect(() => {
+    if (session && !user && getDB().version > 0) {
+      viderEtat();
       setSession(null);
     }
   }, [session, user]);
 
   const login = useCallback(async (email: string, password: string, remember: boolean) => {
-    await Promise.all([new Promise((resolve) => setTimeout(resolve, 900)), syncServerTime()]);
-    const resultat = authentifier(email, password);
-    if (!resultat.ok) throw new Error(resultat.erreur);
-    const next: Session = { compteId: resultat.compte.id, persistante: remember };
-    try {
-      (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(next));
-    } catch {
-      // la session reste en mémoire si le stockage est bloqué
-    }
-    const connecte = construireUser(getDB(), next.compteId);
+    // Délai minimal constant : ne renseigne pas sur l'existence du compte
+    const [r] = await Promise.all([
+      connexion(email, password, remember).catch((err: unknown) => {
+        throw new Error(err instanceof ErreurApi ? err.message : 'Connexion impossible.');
+      }),
+      new Promise((resolve) => setTimeout(resolve, 900)),
+      syncServerTime(),
+    ]);
+    viderEtat();
+    definirEtat(r.etat);
+    setDemo(r.serveur.demo);
+    memoriserPersistance(remember);
+    const connecte = construireUser(r.etat, r.compteId);
     if (!connecte) throw new Error('Compte inaccessible.');
     derniereActivite.current = Date.now();
-    setSession(next);
+    setSession({ compteId: r.compteId, persistante: remember });
     return connecte;
   }, []);
 
-  const terminer = useCallback(
-    (expiree: boolean) => {
-      if (user) journaliserDeconnexion(user, expiree);
-      effacerSession();
-      if (expiree) {
-        try {
-          sessionStorage.setItem(EXPIRATION_KEY, '1');
-        } catch {
-          // ignore
-        }
+  const terminer = useCallback((expiree: boolean) => {
+    void deconnexion(expiree).catch(() => undefined);
+    memoriserPersistance(false);
+    if (expiree) {
+      try {
+        sessionStorage.setItem(EXPIRATION_KEY, '1');
+      } catch {
+        // ignore
       }
-      setSession(null);
-    },
-    [user],
-  );
+    }
+    viderEtat();
+    setSession(null);
+  }, []);
 
   const logout = useCallback(() => terminer(false), [terminer]);
 
@@ -142,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user, session?.persistante, sessionMinutes, terminer]);
 
-  const value = useMemo(() => ({ user, login, logout }), [user, login, logout]);
+  const value = useMemo(() => ({ user, pret, demo, login, logout }), [user, pret, demo, login, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

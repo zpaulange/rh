@@ -11,7 +11,7 @@ import SelectChip from '../../components/ui/SelectChip';
 import TabFilter from '../../components/ui/TabFilter';
 import TableFooter, { paginer } from '../../components/ui/TableFooter';
 import { MOTIFS_PERMISSION } from '../../config/paie';
-import { journaliserExport, relancerAbsence } from '../../db/actions';
+import { journaliserExport, relancerAbsence } from '../../db/api';
 import { useEspaceRH } from '../../hooks/useEspaceRH';
 import { absencesPeriode, type PeriodeAbsence } from '../../lib/absences';
 import { exporterCSV } from '../../lib/export';
@@ -87,7 +87,7 @@ export default function Absences() {
     });
     if (!ok) return;
     try {
-      relancerAbsence(user, a.employe.id, a.jours);
+      await relancerAbsence(user, a.employe.id, a.jours);
       await dialog.alert({ titre: 'Relance envoyée', tone: 'success', message: 'La relance est visible dans les notifications du collaborateur et tracée dans le journal d’audit.' });
     } catch (err) {
       await dialog.alert({ titre: 'Relance impossible', tone: 'danger', message: messageErreur(err) });
@@ -109,7 +109,7 @@ export default function Absences() {
     const titre = `Absences du ${dateCourte(debut)} au ${dateCourte(fin < today ? fin : today)}`;
     if (format === 'CSV') exporterCSV(`absences_${debut}_${fin}.csv`, colonnes, data);
     else exporterRapportPDF(titre, `${departement === 'tous' ? 'Tous les départements' : departement} • taux d'absentéisme ${nombre(Math.round(taux * 10) / 10)} %`, colonnes, data, `absences_${debut}_${fin}.pdf`, `${user.prenom} ${user.nom}`);
-    journaliserExport(user, 'Absences', format, data.length);
+    void journaliserExport(user, 'Absences', format, data.length).catch(() => undefined);
   };
 
   return (

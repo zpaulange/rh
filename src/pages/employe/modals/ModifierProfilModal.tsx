@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Field, LABEL, TextInput } from '../../../components/form';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
-import type { Coordonnees } from '../../../db/actions';
+import type { Coordonnees } from '../../../db/api';
 import type { Employe } from '../../../types';
 
 const INDICATIF = '+229';
@@ -11,7 +11,8 @@ interface Props {
   open: boolean;
   profil: Employe;
   onClose: () => void;
-  onSave: (coordonnees: Coordonnees) => void;
+  /** Enregistrement sur le serveur ; une erreur est affichée dans la fenêtre */
+  onSave: (coordonnees: Coordonnees) => Promise<void>;
 }
 
 const sansIndicatif = (tel: string) => tel.replace(INDICATIF, '').trim();
@@ -33,16 +34,30 @@ export default function ModifierProfilModal({ open, profil, onClose, onSave }: P
     setUrgenceTel(profil.urgenceTel);
   }, [open, profil]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const [envoi, setEnvoi] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  useEffect(() => {
+    if (open) setErreur(null);
+  }, [open]);
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onSave({
-      telPerso: `${INDICATIF} ${telephone.trim()}`,
-      emailPerso: email.trim(),
-      adresse: adresse.trim(),
-      urgenceNom: urgenceNom.trim(),
-      urgenceTel: urgenceTel.trim(),
-    });
-    onClose();
+    if (envoi) return;
+    setEnvoi(true);
+    setErreur(null);
+    try {
+      await onSave({
+        telPerso: `${INDICATIF} ${telephone.trim()}`,
+        emailPerso: email.trim(),
+        adresse: adresse.trim(),
+        urgenceNom: urgenceNom.trim(),
+        urgenceTel: urgenceTel.trim(),
+      });
+      onClose();
+    } catch (err) {
+      setErreur(err instanceof Error ? err.message : 'Enregistrement impossible.');
+    } finally {
+      setEnvoi(false);
+    }
   };
 
   return (
@@ -100,6 +115,12 @@ export default function ModifierProfilModal({ open, profil, onClose, onSave }: P
             <span>Pour modifier vos données contractuelles ou bancaires (RIB, CNSS), contactez le service RH.</span>
           </div>
 
+          {erreur && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300" role="alert">
+              <Icon name="error" className="text-[15px] mt-px" />
+              {erreur}
+            </div>
+          )}
           <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-800">
             <button
               className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
@@ -109,7 +130,8 @@ export default function ModifierProfilModal({ open, profil, onClose, onSave }: P
               Annuler
             </button>
             <button
-              className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm shadow-blue-600/20"
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm shadow-blue-600/20 disabled:opacity-60 disabled:cursor-wait"
+              disabled={envoi}
               type="submit"
             >
               Enregistrer les modifications

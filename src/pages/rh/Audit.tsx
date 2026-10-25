@@ -8,7 +8,7 @@ import KpiCard, { KpiPastille } from '../../components/ui/KpiCard';
 import PageHeader from '../../components/ui/PageHeader';
 import SelectChip from '../../components/ui/SelectChip';
 import TableFooter, { paginer } from '../../components/ui/TableFooter';
-import { journaliserExport } from '../../db/actions';
+import { journaliserExport } from '../../db/api';
 import { useEspaceRH } from '../../hooks/useEspaceRH';
 import { ACTIONS_AUDIT, LIBELLE_ROLE } from '../../lib/audit';
 import { exporterCSV } from '../../lib/export';
@@ -62,7 +62,7 @@ export default function Audit() {
     const data = entrees.map((a) => [dateCourte(dateKey(new Date(a.date))), heureHMS(new Date(a.date)), a.acteur, LIBELLE_ROLE[a.acteurRole], ACTIONS_AUDIT[a.action].label, a.cible, a.details]);
     if (format === 'CSV') exporterCSV(`journal_audit_${today}.csv`, colonnes, data);
     else exporterRapportPDF("Journal d'audit", `${data.length} événement(s) • export du ${dateCourte(today)}`, colonnes, data, `journal_audit_${today}.pdf`, `${user.prenom} ${user.nom}`);
-    journaliserExport(user, "Journal d'audit", format, data.length);
+    void journaliserExport(user, "Journal d'audit", format, data.length).catch(() => undefined);
   };
 
   const reglage = <T extends string>(set: (v: T) => void) => (v: T) => {

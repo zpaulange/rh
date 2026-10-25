@@ -14,7 +14,7 @@ import PhotoLightbox, { PhotoMiniature } from '../../components/ui/PhotoLightbox
 import SelectChip from '../../components/ui/SelectChip';
 import TabFilter from '../../components/ui/TabFilter';
 import { messageErreur, useDialog } from '../../components/ui/Dialog';
-import { deciderRegularisation, journaliserExport } from '../../db/actions';
+import { deciderRegularisation, journaliserExport } from '../../db/api';
 import { LIBELLE_REGULARISATION } from '../../lib/rules';
 import { useEspaceRH } from '../../hooks/useEspaceRH';
 import { exporterCSV } from '../../lib/export';
@@ -104,7 +104,7 @@ export default function Pointages() {
     const data = donneesExport();
     if (format === 'CSV') exporterCSV(`pointages_${date}.csv`, colonnesExport, data);
     else exporterRapportPDF(`Registre des pointages — ${dateLongue(date)}`, `${data.length} collaborateur(s) • tolérance ${params.toleranceRetard} min • horodatage serveur`, colonnesExport, data, `pointages_${date}.pdf`, `${user.prenom} ${user.nom}`);
-    journaliserExport(user, `Registre des pointages du ${dateCourte(date)}`, format, data.length);
+    void journaliserExport(user, `Registre des pointages du ${dateCourte(date)}`, format, data.length).catch(() => undefined);
   };
 
   return (
@@ -354,10 +354,10 @@ export default function Pointages() {
       <DecisionModal
         approuver={decision?.approuver ?? true}
         onClose={() => setDecision(null)}
-        onConfirm={(commentaire) => {
+        onConfirm={async (commentaire) => {
           if (!decision) return;
           try {
-            deciderRegularisation(user, decision.r.id, decision.approuver, commentaire);
+            await deciderRegularisation(user, decision.r.id, decision.approuver, commentaire);
             void dialog.alert({
               titre: decision.approuver ? 'Régularisation validée' : 'Régularisation refusée',
               tone: decision.approuver ? 'success' : 'info',

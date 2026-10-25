@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import Icon from '../../components/ui/Icon';
 import { useDialog } from '../../components/ui/Dialog';
-import { modifierCoordonnees, type Coordonnees } from '../../db/actions';
+import { modifierCoordonnees, type Coordonnees } from '../../db/api';
 import { useEspaceEmploye } from '../../hooks/useEspaceEmploye';
 import { LIBELLE_EVOLUTION } from '../../config/paie';
 import { fcfa } from '../../lib/paie';
@@ -30,8 +30,8 @@ export default function Profil() {
   const [modalOpen, setModalOpen] = useState(false);
   const dialog = useDialog();
 
-  const handleSave = (coordonnees: Coordonnees) => {
-    modifierCoordonnees(user, coordonnees);
+  const handleSave = async (coordonnees: Coordonnees) => {
+    await modifierCoordonnees(user, coordonnees);
     void dialog.alert({ titre: 'Modifications enregistrées', tone: 'success', message: 'Vos coordonnées sont à jour. Le service RH en a été informé.' });
   };
 

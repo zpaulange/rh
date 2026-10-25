@@ -6,13 +6,14 @@ import Card from '../../components/ui/Card';
 import Icon from '../../components/ui/Icon';
 import PageHeader from '../../components/ui/PageHeader';
 import { messageErreur, useDialog } from '../../components/ui/Dialog';
-import { modifierParametres } from '../../db/actions';
-import { reinitialiserBase } from '../../db/store';
+import { useAuth } from '../../auth/AuthContext';
+import { modifierParametres, reinitialiserDemo } from '../../db/api';
 import { useEspaceRH } from '../../hooks/useEspaceRH';
 import { lienCarte, localiser } from '../../lib/geo';
 import type { Parametres as P } from '../../types';
 
 export default function Parametres() {
+  const { demo } = useAuth();
   const { user, db, today } = useEspaceRH();
   const dialog = useDialog();
   const [p, setP] = useState<P>(db.parametres);
@@ -36,14 +37,18 @@ export default function Parametres() {
     setLocalisation(false);
   };
 
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (p.heureFin <= p.heureDebut) {
       void dialog.alert({ titre: 'Horaires incohérents', tone: 'warning', message: "L'heure de fin doit être postérieure à l'heure de début." });
       return;
     }
-    modifierParametres(user, p);
-    void dialog.alert({ titre: 'Paramètres enregistrés', tone: 'success', message: "Les nouvelles règles s'appliquent immédiatement à tous les pointages, congés et connexions. La modification est tracée dans le journal d'audit." });
+    try {
+      await modifierParametres(user, p);
+      void dialog.alert({ titre: 'Paramètres enregistrés', tone: 'success', message: "Les nouvelles règles s'appliquent immédiatement à tous les pointages, congés et connexions. La modification est tracée dans le journal d'audit." });
+    } catch (err) {
+      void dialog.alert({ titre: 'Enregistrement impossible', tone: 'danger', message: messageErreur(err) });
+    }
   };
 
   return (
@@ -185,10 +190,13 @@ export default function Parametres() {
         <JoursFeriesCard anneeCourante={Number(today.slice(0, 4))} joursFeries={p.joursFeries} onChange={(j) => set('joursFeries', j)} />
       </div>
 
+      {demo && user.role === 'admin' && (
       <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-rose-300">Données de démonstration</div>
-          <p className="text-xs text-slate-400 mt-0.5">Réinitialise la base locale (collaborateurs, pointages, demandes, journal). À retirer une fois l'API branchée.</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Régénère toute la base du serveur (collaborateurs, pointages, demandes, paies, journal) pour tous les utilisateurs. Disponible uniquement lorsque le serveur est en mode démonstration.
+          </p>
         </div>
         <button
           className="h-9 px-3.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-medium"
@@ -201,14 +209,19 @@ export default function Parametres() {
               confirmer: 'Réinitialiser',
             });
             if (!ok) return;
-            reinitialiserBase();
-            void dialog.alert({ titre: 'Base réinitialisée', tone: 'success', message: 'Les données de démonstration ont été régénérées à partir de la date du jour.' });
+            try {
+              await reinitialiserDemo();
+              void dialog.alert({ titre: 'Base réinitialisée', tone: 'success', message: 'Les données de démonstration ont été régénérées à partir de la date du jour.' });
+            } catch (err) {
+              void dialog.alert({ titre: 'Réinitialisation impossible', tone: 'danger', message: messageErreur(err) });
+            }
           }}
           type="button"
         >
           Réinitialiser la base
         </button>
       </div>
+      )}
     </form>
   );
 }

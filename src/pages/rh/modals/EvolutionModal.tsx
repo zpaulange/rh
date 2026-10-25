@@ -6,7 +6,7 @@ import { messageErreur, useDialog } from '../../../components/ui/Dialog';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
 import { LIBELLE_EVOLUTION } from '../../../config/paie';
-import { enregistrerEvolution, type NouvelleEvolution } from '../../../db/actions';
+import { enregistrerEvolution, type NouvelleEvolution } from '../../../db/api';
 import { useDB } from '../../../db/store';
 import { fcfa, simulerSalaire, smigApplicable, tauxAncienneteAu } from '../../../lib/paie';
 import { serverNow } from '../../../lib/serverTime';
@@ -100,7 +100,7 @@ export default function EvolutionModal({ open, employe, onClose, onEnregistree }
     });
     if (!ok) return;
     try {
-      const ev = enregistrerEvolution(user, employe.id, {
+      const ev = await enregistrerEvolution(user, employe.id, {
         type,
         dateEffet,
         apres: { poste: poste.trim(), departement, salaireBase: salaire, primesFixes: primes.filter((p) => p.libelle.trim() && p.montant > 0) },

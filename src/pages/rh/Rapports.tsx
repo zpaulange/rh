@@ -4,7 +4,7 @@ import Icon from '../../components/ui/Icon';
 import PageHeader from '../../components/ui/PageHeader';
 import SelectChip from '../../components/ui/SelectChip';
 import { useDialog } from '../../components/ui/Dialog';
-import { journaliserExport } from '../../db/actions';
+import { journaliserExport } from '../../db/api';
 import { useEspaceRH } from '../../hooks/useEspaceRH';
 import { exporterCSV } from '../../lib/export';
 import { exporterRapportPDF } from '../../lib/pdfLazy';
@@ -155,7 +155,7 @@ export default function Rapports() {
     }
     if (format === 'CSV') exporterCSV(`${fichier}.csv`, rapport.colonnes, rapport.lignes);
     else exporterRapportPDF(`${meta.titre} — ${periode}`, `${portee} • ${rapport.synthese}`, rapport.colonnes, rapport.lignes, `${fichier}.pdf`, `${user.prenom} ${user.nom}`);
-    journaliserExport(user, `${meta.titre} (${periode}, ${portee})`, format, rapport.lignes.length);
+    void journaliserExport(user, `${meta.titre} (${periode}, ${portee})`, format, rapport.lignes.length).catch(() => undefined);
     void dialog.alert({
       titre: 'Rapport exporté',
       tone: 'success',

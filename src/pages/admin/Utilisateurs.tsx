@@ -13,7 +13,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import SelectChip from '../../components/ui/SelectChip';
 import TabFilter from '../../components/ui/TabFilter';
 import TableFooter, { paginer } from '../../components/ui/TableFooter';
-import { changerRole, modifierPermissions } from '../../db/actions';
+import { changerRole, modifierPermissions } from '../../db/api';
 import { useActionsCompte } from '../../hooks/useActionsCompte';
 import { useEspaceRH } from '../../hooks/useEspaceRH';
 import { GROUPES_PERMISSIONS, LIBELLE_ROLE_LONG, PERMISSIONS_PAR_DEFAUT } from '../../lib/permissions';
@@ -96,7 +96,7 @@ export default function Utilisateurs() {
     });
     if (!ok) return;
     try {
-      modifierPermissions(user, 'rh', [...droitsRh]);
+      await modifierPermissions(user, 'rh', [...droitsRh]);
       await dialog.alert({ titre: 'Permissions mises à jour', tone: 'success', message: 'Les comptes RH ont été notifiés ; la modification est tracée dans le journal d’audit.' });
     } catch (err) {
       await dialog.alert({ titre: 'Enregistrement impossible', tone: 'danger', message: messageErreur(err) });
@@ -325,9 +325,9 @@ export default function Utilisateurs() {
         icone="admin_panel_settings"
         labelMotif="Motif du changement"
         onClose={() => setCibleRole(null)}
-        onConfirm={(motif) => {
+        onConfirm={async (motif) => {
           if (!cibleRole) return;
-          changerRole(user, cibleRole.e.id, nouveauRole, motif);
+          await changerRole(user, cibleRole.e.id, nouveauRole, motif);
           const nom = `${cibleRole.e.prenom} ${cibleRole.e.nom}`;
           setCibleRole(null);
           void dialog.alert({ titre: 'Rôle modifié', tone: 'success', message: `${nom} est désormais ${LIBELLE_ROLE_LONG[nouveauRole]}. Son menu est mis à jour immédiatement et il a été notifié.` });

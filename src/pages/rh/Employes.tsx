@@ -11,7 +11,7 @@ import ActionMenu from '../../components/ui/ActionMenu';
 import PageHeader from '../../components/ui/PageHeader';
 import SelectChip from '../../components/ui/SelectChip';
 import TableFooter, { paginer } from '../../components/ui/TableFooter';
-import { creerEmploye, journaliserExport, modifierEmploye, motifsBlocageSuppression, supprimerEmploye } from '../../db/actions';
+import { creerEmploye, journaliserExport, modifierEmploye, motifsBlocageSuppression, supprimerEmploye } from '../../db/api';
 import MotifModal from '../../components/ui/MotifModal';
 import { peut } from '../../lib/permissions';
 import { useDialog } from '../../components/ui/Dialog';
@@ -103,7 +103,7 @@ export default function Employes() {
       compte?.actif ? 'Actif' : 'Désactivé',
     ]);
     exporterCSV(`effectif_${today}.csv`, colonnes, data);
-    journaliserExport(user, 'Liste des collaborateurs', 'CSV', data.length);
+    void journaliserExport(user, 'Liste des collaborateurs', 'CSV', data.length).catch(() => undefined);
   };
 
   return (
@@ -338,8 +338,8 @@ export default function Employes() {
 
       <EmployeFormModal
         onClose={() => setCreation(false)}
-        onSave={(data, role) => {
-          const { employe, motDePasse } = creerEmploye(user, data, role);
+        onSave={async (data, role) => {
+          const { employe, motDePasse } = await creerEmploye(user, data, role);
           setCreation(false);
           void afficherIdentifiants('Collaborateur créé', employe, employe.emailPro, motDePasse);
         }}
@@ -348,9 +348,9 @@ export default function Employes() {
       <EmployeFormModal
         employe={edition ?? undefined}
         onClose={() => setEdition(null)}
-        onSave={(data) => {
+        onSave={async (data) => {
           if (!edition) return;
-          modifierEmploye(user, edition.id, data);
+          await modifierEmploye(user, edition.id, data);
           setEdition(null);
           void dialog.alert({ titre: 'Dossier mis à jour', tone: 'success', message: `Les modifications du dossier de ${data.prenom} ${data.nom} sont enregistrées et tracées dans le journal d'audit.` });
         }}
@@ -395,9 +395,9 @@ export default function Employes() {
         icone="person_remove"
         labelMotif="Motif de la suppression"
         onClose={() => setSuppression(null)}
-        onConfirm={(motif) => {
+        onConfirm={async (motif) => {
           if (!suppression) return;
-          supprimerEmploye(user, suppression.id, motif);
+          await supprimerEmploye(user, suppression.id, motif);
           const nom = `${suppression.prenom} ${suppression.nom}`;
           setSuppression(null);
           void dialog.alert({ titre: 'Dossier supprimé', tone: 'success', message: `Le dossier et le compte de ${nom} ont été supprimés. L'opération reste tracée dans le journal d'audit.` });

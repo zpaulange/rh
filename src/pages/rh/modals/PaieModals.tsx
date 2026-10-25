@@ -5,7 +5,7 @@ import { messageErreur, useDialog } from '../../../components/ui/Dialog';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
 import { PAIE } from '../../../config/paie';
-import { ajouterElementVariable, supprimerElementVariable } from '../../../db/actions';
+import { ajouterElementVariable, supprimerElementVariable } from '../../../db/api';
 import { fcfa, mentionExoneration, rubriquesHeuresSup } from '../../../lib/paie';
 import { serverNow } from '../../../lib/serverTime';
 import { dateKey, moisLong } from '../../../lib/time';
@@ -64,7 +64,7 @@ export function ElementVariableModal({ campagne, ligne, onClose }: ElementProps)
       return;
     }
     try {
-      ajouterElementVariable(user, campagne.id, ligne.employeId, { libelle: libelle.trim(), montant, nature, soumisCnss: nature === 'prime' && soumisCnss, soumisIts: nature === 'prime' && soumisIts });
+      await ajouterElementVariable(user, campagne.id, ligne.employeId, { libelle: libelle.trim(), montant, nature, soumisCnss: nature === 'prime' && soumisCnss, soumisIts: nature === 'prime' && soumisIts });
       onClose();
     } catch (err) {
       await dialog.alert({ titre: 'Ajout impossible', tone: 'danger', message: messageErreur(err) });
@@ -155,7 +155,12 @@ export function LignePaieModal({ campagne, ligne, onClose }: { campagne: Campagn
   const retirer = async (id: string, libelle: string) => {
     if (!ligne) return;
     const ok = await dialog.confirm({ titre: `Retirer « ${libelle} » ?`, tone: 'danger', message: 'Le net à payer sera recalculé.', confirmer: 'Retirer' });
-    if (ok) supprimerElementVariable(user, campagne.id, ligne.employeId, id);
+    if (!ok) return;
+    try {
+      await supprimerElementVariable(user, campagne.id, ligne.employeId, id);
+    } catch (err) {
+      await dialog.alert({ titre: 'Action impossible', tone: 'danger', message: messageErreur(err) });
+    }
   };
 
   return (

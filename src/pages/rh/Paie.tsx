@@ -12,7 +12,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import SelectChip from '../../components/ui/SelectChip';
 import { PAIE } from '../../config/paie';
 import { COMPTES, ecrituresPaie, equilibre } from '../../lib/comptabilite';
-import { journaliserExport, payerSalaires, preparerPaie, recalculerPaie, rouvrirPaie, validerPaie } from '../../db/actions';
+import { journaliserExport, payerSalaires, preparerPaie, recalculerPaie, rouvrirPaie, validerPaie } from '../../db/api';
 import { useEspaceRH } from '../../hooks/useEspaceRH';
 import { exporterCSV } from '../../lib/export';
 import { campagneDuMois, fcfa, totaux } from '../../lib/paie';
@@ -57,9 +57,9 @@ export default function Paie() {
   const ligneDe = (id: string | null) => (id && campagne ? (campagne.lignes.find((l) => l.employeId === id) ?? null) : null);
   const employeDe = (id: string) => db.employes.find((e) => e.id === id)!;
 
-  const executer = async (action: () => void, succes: { titre: string; message: string }) => {
+  const executer = async (action: () => Promise<unknown>, succes: { titre: string; message: string }) => {
     try {
-      action();
+      await action();
       await dialog.alert({ ...succes, tone: 'success' });
     } catch (err) {
       await dialog.alert({ titre: 'Action impossible', tone: 'danger', message: messageErreur(err) });
@@ -117,7 +117,7 @@ export default function Paie() {
   const exporter = (nom: string, format: 'CSV' | 'PDF', colonnes: string[], lignes: (string | number)[][], fichier: string, sousTitre: string) => {
     if (format === 'CSV') exporterCSV(`${fichier}.csv`, colonnes, lignes);
     else exporterRapportPDF(nom, sousTitre, colonnes, lignes, `${fichier}.pdf`, auteur);
-    journaliserExport(user, `${nom} — ${moisLong(mois)}`, format, lignes.length);
+    void journaliserExport(user, `${nom} — ${moisLong(mois)}`, format, lignes.length).catch(() => undefined);
   };
   const exportVirement = () =>
     campagne &&
@@ -462,7 +462,7 @@ export default function Paie() {
               });
               if (!ok) return;
               try {
-                const n = payerSalaires(user, campagne.id, date, mode);
+                const n = await payerSalaires(user, campagne.id, date, mode);
                 await dialog.alert({
                   titre: 'Salaires versés',
                   tone: 'success',

@@ -7,7 +7,7 @@ import SelectChip from '../../components/ui/SelectChip';
 import TabFilter from '../../components/ui/TabFilter';
 import TableFooter, { paginer } from '../../components/ui/TableFooter';
 import { useDialog } from '../../components/ui/Dialog';
-import { journaliserTelechargement } from '../../db/actions';
+import { journaliserTelechargement } from '../../db/api';
 import { useEspaceEmploye } from '../../hooks/useEspaceEmploye';
 import { telechargerPDF } from '../../lib/pdfLazy';
 import { calculerDroits, LIBELLE_CONGE } from '../../lib/rules';
@@ -72,7 +72,7 @@ export default function Conges() {
     const doc = titrePour(c);
     if (!doc) return;
     telechargerPDF(db, doc);
-    journaliserTelechargement(user, doc);
+    void journaliserTelechargement(user, doc).catch(() => undefined);
   };
 
   const annees = [anneeCourante, String(Number(anneeCourante) - 1)];

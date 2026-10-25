@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 
-// Horodatage sécurisé : l'heure de référence est celle du serveur (en-tête HTTP "Date"),
-// jamais l'horloge du poste qui peut être modifiée par l'utilisateur.
-// En production, le backend horodate lui-même chaque pointage ; ce module sert l'affichage
-// et l'horodatage côté client tant que l'API n'est pas branchée.
+// Horodatage sécurisé : l'heure de référence est celle du serveur, jamais l'horloge du poste.
+// Côté navigateur, l'écart avec le serveur est mesuré sur l'en-tête HTTP « Date » de l'API (affichage) ;
+// les pointages et décisions sont horodatés par le backend.
+
+/** Racine de l'API (proxy Vite en développement, même origine en production) */
+export const API_URL: string = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_API_URL ?? '/api';
 
 let offsetMs = 0;
 let source: 'serveur' | 'local' = 'local';
@@ -12,7 +14,7 @@ let syncPromise: Promise<void> | null = null;
 async function synchroniser(): Promise<void> {
   try {
     const t0 = Date.now();
-    const res = await fetch(`${window.location.origin}/?horloge=${t0}`, { method: 'HEAD', cache: 'no-store' });
+    const res = await fetch(`${API_URL}/horloge?t=${t0}`, { method: 'HEAD', cache: 'no-store' });
     const t1 = Date.now();
     const header = res.headers.get('Date');
     if (!header) return;

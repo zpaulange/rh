@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useUser } from '../auth/AuthContext';
-import { journaliserTelechargement, verifierDocument } from '../db/actions';
+import { journaliserTelechargement, verifierDocument } from '../db/api';
 import { getDB } from '../db/store';
 import { CERTIFICATION, LIBELLE_CATEGORIE } from '../lib/documents';
 import { telechargerPDF } from '../lib/pdfLazy';
@@ -15,7 +15,8 @@ export function useTelechargement() {
   const user = useUser();
   return (doc: DocumentGenere) => {
     telechargerPDF(getDB(), doc);
-    journaliserTelechargement(user, doc);
+    // Trace du téléchargement : un échec réseau ne doit pas empêcher l'accès au document
+    void journaliserTelechargement(user, doc).catch(() => undefined);
   };
 }
 
@@ -25,10 +26,14 @@ export function VerificationDocument() {
   const [code, setCode] = useState('');
   const [resultat, setResultat] = useState<{ saisie: string; doc: DocumentGenere | null } | null>(null);
 
-  const verifier = () => {
+  const verifier = async () => {
     const saisie = code.trim();
     if (!saisie) return;
-    setResultat({ saisie, doc: verifierDocument(user, saisie) });
+    try {
+      setResultat({ saisie, doc: await verifierDocument(user, saisie) });
+    } catch {
+      setResultat({ saisie, doc: null });
+    }
   };
 
   const titulaire = resultat?.doc ? getDB().employes.find((e) => e.id === resultat.doc!.employeId) : undefined;
@@ -48,7 +53,7 @@ export function VerificationDocument() {
             className="flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              verifier();
+              void verifier();
             }}
           >
             <TextInput

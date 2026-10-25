@@ -6,7 +6,7 @@ import { serverNow } from '../../../lib/serverTime';
 import { dateKey, derniersMois, moisLong } from '../../../lib/time';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
-import { demanderDocument } from '../../../db/actions';
+import { demanderDocument } from '../../../db/api';
 import type { FormatDelivrance, TypeDocumentDemande } from '../../../types';
 
 type DocType = TypeDocumentDemande;
@@ -55,11 +55,22 @@ export default function DemandeDocumentModal({ open, onClose, onSubmitted }: Pro
     setMois('');
   }, [open]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const [envoi, setEnvoi] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    demanderDocument(user, { type: docType, destinataire: destinataire.trim(), format, commentaire: commentaire.trim(), mois: moisProposes.length ? mois : undefined });
-    onSubmitted();
-    onClose();
+    if (envoi) return;
+    setEnvoi(true);
+    setErreur(null);
+    try {
+      await demanderDocument(user, { type: docType, destinataire: destinataire.trim(), format, commentaire: commentaire.trim(), mois: moisProposes.length ? mois : undefined });
+      onSubmitted();
+      onClose();
+    } catch (err) {
+      setErreur(err instanceof Error ? err.message : 'Envoi impossible.');
+    } finally {
+      setEnvoi(false);
+    }
   };
 
   return (
@@ -162,6 +173,12 @@ export default function DemandeDocumentModal({ open, onClose, onSubmitted }: Pro
             />
           </Field>
 
+          {erreur && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300" role="alert">
+              <Icon name="error" className="text-[15px] mt-px" />
+              {erreur}
+            </div>
+          )}
           <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
             <button
               className="px-4 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors cursor-pointer"
@@ -171,7 +188,8 @@ export default function DemandeDocumentModal({ open, onClose, onSubmitted }: Pro
               Annuler
             </button>
             <button
-              className="px-5 py-2.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white shadow-sm shadow-brand-600/30 transition-colors cursor-pointer flex items-center gap-2"
+              className="px-5 py-2.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white shadow-sm shadow-brand-600/30 transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait"
+              disabled={envoi}
               type="submit"
             >
               <Icon name="send" className="text-[16px]" />

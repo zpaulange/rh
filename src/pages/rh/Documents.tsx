@@ -11,7 +11,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import TabFilter from '../../components/ui/TabFilter';
 import TableFooter, { paginer } from '../../components/ui/TableFooter';
 import { messageErreur, useDialog } from '../../components/ui/Dialog';
-import { refuserDemandeDocument, traiterDemandeDocument } from '../../db/actions';
+import { refuserDemandeDocument, traiterDemandeDocument } from '../../db/api';
 import { getDB } from '../../db/store';
 import { useEspaceRH } from '../../hooks/useEspaceRH';
 import { CERTIFICATION, LIBELLE_CATEGORIE, LIBELLE_DEMANDE_DOCUMENT, STYLE_CATEGORIE } from '../../lib/documents';
@@ -69,7 +69,7 @@ export default function Documents() {
     });
     if (!ok) return;
     try {
-      const doc = traiterDemandeDocument(user, d.id);
+      const doc = await traiterDemandeDocument(user, d.id);
       telechargerPDF(getDB(), doc);
       const choix = await dialog.alert({
         titre: 'Document généré',
@@ -348,10 +348,10 @@ export default function Documents() {
       <DecisionModal
         approuver={false}
         onClose={() => setRefus(null)}
-        onConfirm={(motif) => {
+        onConfirm={async (motif) => {
           if (!refus) return;
           try {
-            refuserDemandeDocument(user, refus.id, motif);
+            await refuserDemandeDocument(user, refus.id, motif);
             void dialog.alert({ titre: 'Demande refusée', tone: 'info', message: 'Le collaborateur a été notifié avec le motif du refus.' });
           } catch (err) {
             void dialog.alert({ titre: 'Action impossible', tone: 'danger', message: messageErreur(err) });

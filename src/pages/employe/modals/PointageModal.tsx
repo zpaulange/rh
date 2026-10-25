@@ -3,7 +3,7 @@ import { useUser } from '../../../auth/AuthContext';
 import CameraCapture from '../../../components/ui/CameraCapture';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
-import { pointerArrivee } from '../../../db/actions';
+import { pointerArrivee } from '../../../db/api';
 import { useDB } from '../../../db/store';
 import { formatDistance, lienCarte, localiser, versGeoPoint } from '../../../lib/geo';
 import { calculerRetard } from '../../../lib/rules';
@@ -54,12 +54,12 @@ export default function PointageModal({ open, onClose, onPointe }: Props) {
   const geoManquante = params.geolocObligatoire && geo.statut !== 'ok';
   const bloque = photoManquante || geoManquante || envoi;
 
-  const valider = () => {
+  const valider = async () => {
     setEnvoi(true);
     setErreur(null);
     try {
       const mobile = window.matchMedia('(pointer: coarse)').matches;
-      const p = pointerArrivee(user, {
+      const p = await pointerArrivee(user, {
         geo: geo.statut === 'ok' ? geo.geo : null,
         photo,
         source: mobile ? 'mobile' : 'web',

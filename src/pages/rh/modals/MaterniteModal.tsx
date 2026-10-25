@@ -5,7 +5,7 @@ import { messageErreur } from '../../../components/ui/Dialog';
 import FileDrop from '../../../components/ui/FileDrop';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
-import { declarerAccouchement, prolongerMaternite } from '../../../db/actions';
+import { declarerAccouchement, prolongerMaternite } from '../../../db/api';
 import { useDB } from '../../../db/store';
 import { periodeMaternite } from '../../../lib/maternite';
 import { serverNow } from '../../../lib/serverTime';
@@ -40,10 +40,10 @@ export default function MaterniteModal({ action, onClose, onFait }: Props) {
   const accouchement = mode === 'accouchement';
   const apercu = accouchement && conge.dateAccouchementPresumee ? periodeMaternite(conge.dateAccouchementPresumee, date, conge.prolongationMaladie) : { debut: conge.debut, fin: ajouterJours(conge.fin, 28) };
 
-  const submit = (ev: FormEvent<HTMLFormElement>) => {
+  const submit = async (ev: FormEvent<HTMLFormElement>) => {
     ev.preventDefault();
     try {
-      onFait(accouchement ? declarerAccouchement(user, conge.id, date) : prolongerMaternite(user, conge.id, fichier?.name ?? ''));
+      onFait(accouchement ? await declarerAccouchement(user, conge.id, date) : await prolongerMaternite(user, conge.id, fichier?.name ?? ''));
     } catch (err) {
       setErreur(messageErreur(err));
     }

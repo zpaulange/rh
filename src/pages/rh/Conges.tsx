@@ -10,7 +10,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import SelectChip from '../../components/ui/SelectChip';
 import TabFilter from '../../components/ui/TabFilter';
 import { messageErreur, useDialog } from '../../components/ui/Dialog';
-import { deciderConge, journaliserExport } from '../../db/actions';
+import { deciderConge, journaliserExport } from '../../db/api';
 import { peut } from '../../lib/permissions';
 import MaterniteModal from './modals/MaterniteModal';
 import { getDB } from '../../db/store';
@@ -100,7 +100,7 @@ export default function Conges() {
     ]);
     if (format === 'CSV') exporterCSV(`soldes_conges_${today}.csv`, colonnesSoldes, data);
     else exporterRapportPDF(`Soldes de congés — exercice ${today.slice(0, 4)}`, `Arrêtés au ${dateCourte(today)} • ${db.parametres.cpParMois} j ouvrables CP / mois`, colonnesSoldes, data, `soldes_conges_${today}.pdf`, `${user.prenom} ${user.nom}`);
-    journaliserExport(user, 'Soldes de congés', format, data.length);
+    void journaliserExport(user, 'Soldes de congés', format, data.length).catch(() => undefined);
   };
 
   // Planning des absences sur les 4 prochaines semaines
@@ -435,11 +435,11 @@ export default function Conges() {
       <DecisionModal
         approuver={decision?.approuver ?? true}
         onClose={() => setDecision(null)}
-        onConfirm={(commentaire) => {
+        onConfirm={async (commentaire) => {
           if (!decision) return;
           try {
             const c = decision.c;
-            deciderConge(user, c.id, decision.approuver, commentaire);
+            await deciderConge(user, c.id, decision.approuver, commentaire);
             const titre = getDB().documents.find((d) => d.modele === 'titre_conge' && d.params.congeId === c.id);
             if (decision.approuver) {
               void dialog

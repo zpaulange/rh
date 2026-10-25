@@ -10,7 +10,8 @@ interface DecisionModalProps {
   titre: string;
   resume: ReactNode;
   onClose: () => void;
-  onConfirm: (commentaire: string) => void;
+  /** Peut être asynchrone (action envoyée au serveur) : le bouton reste désactivé pendant l'envoi */
+  onConfirm: (commentaire: string) => void | Promise<void>;
 }
 
 // Validation ou refus d'une demande, avec commentaire (obligatoire en cas de refus)
@@ -20,9 +21,16 @@ export default function DecisionModal({ open, approuver, titre, resume, onClose,
     if (open) setCommentaire('');
   }, [open]);
 
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const [envoi, setEnvoi] = useState(false);
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onConfirm(commentaire.trim());
+    if (envoi) return;
+    setEnvoi(true);
+    try {
+      await onConfirm(commentaire.trim());
+    } finally {
+      setEnvoi(false);
+    }
   };
 
   return (
@@ -79,9 +87,10 @@ export default function DecisionModal({ open, approuver, titre, resume, onClose,
               Annuler
             </button>
             <button
-              className={`px-5 py-2.5 rounded-lg text-xs font-semibold text-white shadow-sm transition-colors flex items-center gap-2 ${
+              className={`px-5 py-2.5 rounded-lg text-xs font-semibold text-white shadow-sm transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait ${
                 approuver ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'
               }`}
+              disabled={envoi}
               type="submit"
             >
               <Icon name={approuver ? 'check' : 'close'} className="text-[16px]" />

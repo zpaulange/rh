@@ -4,7 +4,7 @@ import { DatePicker, Field, LABEL, PastilleRadio, RadioGroup, Textarea, TimePick
 import FileDrop from '../../../components/ui/FileDrop';
 import Icon from '../../../components/ui/Icon';
 import Modal from '../../../components/ui/Modal';
-import { demanderRegularisation } from '../../../db/actions';
+import { demanderRegularisation } from '../../../db/api';
 import { serverNow } from '../../../lib/serverTime';
 import { dateKey, moisLong } from '../../../lib/time';
 import type { TypeRegularisation } from '../../../types';
@@ -48,14 +48,19 @@ export default function RegulariserPointageModal({ open, onClose, onSubmitted, d
     setErreur(null);
   }, [open, datePreselection]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const [envoi, setEnvoi] = useState(false);
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (envoi) return;
+    setEnvoi(true);
     try {
-      demanderRegularisation(user, { type: regType, date, entree, depart, motif: motif.trim(), justificatif: fichier?.name ?? null });
+      await demanderRegularisation(user, { type: regType, date, entree, depart, motif: motif.trim(), justificatif: fichier?.name ?? null });
       onSubmitted();
       onClose();
     } catch (err) {
       setErreur(err instanceof Error ? err.message : 'Envoi impossible.');
+    } finally {
+      setEnvoi(false);
     }
   };
 
@@ -161,7 +166,8 @@ export default function RegulariserPointageModal({ open, onClose, onSubmitted, d
               Annuler
             </button>
             <button
-              className="px-4 py-2 rounded-lg font-medium bg-brand-600 hover:bg-brand-500 text-white shadow-sm shadow-brand-600/30 flex items-center gap-1.5 transition-colors"
+              className="px-4 py-2 rounded-lg font-medium bg-brand-600 hover:bg-brand-500 text-white shadow-sm shadow-brand-600/30 flex items-center gap-1.5 transition-colors disabled:opacity-60 disabled:cursor-wait"
+              disabled={envoi}
               type="submit"
             >
               <Icon name="send" className="text-[15px]" />

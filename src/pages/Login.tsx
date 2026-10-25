@@ -75,14 +75,9 @@ export default function Login() {
                 <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/30">
                   <Icon name="schedule" className="text-[24px]" />
                 </div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-display text-2xl font-bold tracking-tight text-white">
-                    Sika<span className="text-blue-500">RH</span>
-                  </span>
-                  <span className="text-xs uppercase font-semibold tracking-wider text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/60">
-                    PRO
-                  </span>
-                </div>
+                <span className="font-display text-2xl font-bold tracking-tight text-white">
+                  Sika<span className="text-blue-500">RH</span>
+                </span>
               </div>
               <h1 className="text-2xl font-display font-bold text-white mt-5">Connexion</h1>
             </div>
