@@ -210,7 +210,10 @@ async function principal(): Promise<void> {
   const conge = await etape('demanderConge', 'congé payé d’un jour', () =>
     api.demanderConge(U, { type: 'conge_paye', debut: debutConge, debutPeriode: 'matin', fin: debutConge, finPeriode: 'fin', motif: 'Affaires familiales', justificatif: null }),
   );
-  const debutPermission = ouvrableApres(aujourdhui, 60);
+  // Jour ouvrable hors jours fériés (sinon la période ne contient aucun jour ouvrable)
+  const feriesKoffi = new Set(getDB().parametres.joursFeries.map((f) => f.date));
+  let debutPermission = ouvrableApres(aujourdhui, 60);
+  while (feriesKoffi.has(debutPermission)) debutPermission = ouvrableApres(debutPermission, 1);
   const permission = await etape('demanderConge', 'permission exceptionnelle (mariage)', () =>
     api.demanderConge(U, { type: 'permission', motifPermission: 'mariage_travailleur', debut: debutPermission, debutPeriode: 'matin', fin: debutPermission, finPeriode: 'fin', motif: 'Événement familial', justificatif: 'acte.pdf' }),
   );
